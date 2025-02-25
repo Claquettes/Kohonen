@@ -239,6 +239,33 @@ class SOM:
         return s / nsamples
 
 
+    def auto_organisation(self, X):
+        '''
+        @summary: Calcule la mesure d'auto-organisation (erreur topographique) du réseau sur l'ensemble de données X.
+                  Pour chaque échantillon, on détermine le BMU et le second BMU (SBMU). Si ces deux neurones ne sont pas
+                  voisins sur la carte (c'est-à-dire que la distance entre leurs coordonnées dans la grille est supérieure à 1),
+                  l'échantillon est considéré comme mal organisé.
+        @param X: ensemble de données (numpy array)
+        @return: erreur topographique (float) entre 0 et 1
+        '''
+        nsamples = X.shape[0]
+        error_count = 0
+        for x in X:
+            self.compute(x.flatten())
+            # Récupération des activités sous forme aplatie
+            flat = self.activitymap.flatten()
+            bmu_index = numpy.argmin(flat)
+            temp = flat.copy()
+            temp[bmu_index] = numpy.inf
+            sbmu_index = numpy.argmin(temp)
+            bmu_coords = numpy.unravel_index(bmu_index, self.gridsize)
+            sbmu_coords = numpy.unravel_index(sbmu_index, self.gridsize)
+            # Vérification de l'adjacence (on considère voisins si la distance max sur les indices <= 1)
+            if max(abs(bmu_coords[0] - sbmu_coords[0]), abs(bmu_coords[1] - sbmu_coords[1])) > 1:
+                error_count += 1
+        return error_count / nsamples
+
+
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
     # Création d'un réseau avec une entrée (2,1) et une carte (10,10)
@@ -253,7 +280,7 @@ if __name__ == '__main__':
     N = 30000
     # Affichage interactif de l'évolution du réseau
     # TODO à mettre à faux pour que les simulations aillent plus vite
-    VERBOSE = True
+    VERBOSE = False
     # Nombre de pas de temps avant rafraissichement de l'affichage
     NAFFICHAGE = 1000
     # DONNÉES D'APPRENTISSAGE
@@ -261,9 +288,9 @@ if __name__ == '__main__':
     # TODO décommenter les données souhaitées
     nsamples = 1200
     # Ensemble de données 1
-    samples = numpy.random.random((nsamples, 2, 1)) * 2 - 1
+    #samples = numpy.random.random((nsamples, 2, 1)) * 2 - 1
     # Ensemble de données 2
-    #  samples1 = -numpy.random.random((nsamples//3,2,1))
+    samples = -numpy.random.random((nsamples//3,2,1))
     #  samples2 = numpy.random.random((nsamples//3,2,1))
     #  samples2[:,0,:] -= 1
     #  samples3 = numpy.random.random((nsamples//3,2,1))
@@ -314,8 +341,9 @@ if __name__ == '__main__':
         network.scatter_plot(False)
     # Boucle d'apprentissage
     for i in range(N + 1):
+        print("Iteration ", i)
         # Choix d'un exemple aléatoire pour l'entrée courante
-        index = numpy.random.randint(nsamples)
+        index = numpy.random.randint(samples.shape[0])
         x = samples[index].flatten()
         # Calcul de l'activité du réseau
         network.compute(x)
@@ -342,3 +370,4 @@ if __name__ == '__main__':
     network.plot()
     # Affichage de l'erreur de quantification vectorielle moyenne après apprentissage
     print("erreur de quantification vectorielle moyenne ", network.quantification(samples))
+    print("Erreur d'auto-organisation (topographique) :", network.auto_organisation(samples))
