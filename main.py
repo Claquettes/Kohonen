@@ -14,7 +14,7 @@ from __future__ import division
 import numpy
 # Librairie d'affichage
 import matplotlib.pyplot as plt
-
+import os
 
 class Neuron:
     ''' Classe représentant un neurone '''
@@ -265,6 +265,113 @@ class SOM:
                 error_count += 1
         return error_count / nsamples
 
+def test_parameters():
+    """
+    Systematically tests the impact of different parameters on the Kohonen network.
+    Saves the results as CSV and figures as PNG for later analysis.
+    """
+    # Create a directory for results
+    results_dir = "results"
+    os.makedirs(results_dir, exist_ok=True)
+
+    # Define parameter ranges
+    eta_values = [0, 0.01, 0.05, 0.1, 0.5, 1]
+    sigma_values = [0.1, 0.4, 1.4, 2, 4]
+    N_values = [1000, 5000, 10000, 30000, 50000, 100000]
+    grid_shapes = [(10, 10), (20, 5), (5, 20), (30, 1)]  # Square, rectangle, and line
+    dataset_types = ["uniform", "clustered", "random_gap"]
+
+    # Define constant parameters (default values)
+    DEFAULT_ETA = 0.05
+    DEFAULT_SIGMA = 1.4
+    DEFAULT_N = 100000
+    DEFAULT_GRIDSIZE = (10, 10)
+
+    results = []  # To store results for CSV
+
+    for dataset_type in dataset_types:
+        samples = generate_dataset(dataset_type)
+
+        for eta in eta_values:
+            print(f"Testing eta={eta} on {dataset_type}")
+            network = SOM((2, 1), DEFAULT_GRIDSIZE)
+            run_training(network, eta, DEFAULT_SIGMA, DEFAULT_N, samples, results_dir, f"eta_{eta}_{dataset_type}")
+            results.append(
+                [dataset_type, eta, DEFAULT_SIGMA, DEFAULT_N, DEFAULT_GRIDSIZE, *evaluate_network(network, samples)])
+
+        for sigma in sigma_values:
+            print(f"Testing sigma={sigma} on {dataset_type}")
+            network = SOM((2, 1), DEFAULT_GRIDSIZE)
+            run_training(network, DEFAULT_ETA, sigma, DEFAULT_N, samples, results_dir, f"sigma_{sigma}_{dataset_type}")
+            results.append(
+                [dataset_type, DEFAULT_ETA, sigma, DEFAULT_N, DEFAULT_GRIDSIZE, *evaluate_network(network, samples)])
+
+        for N in N_values:
+            print(f"Testing N={N} on {dataset_type}")
+            network = SOM((2, 1), DEFAULT_GRIDSIZE)
+            run_training(network, DEFAULT_ETA, DEFAULT_SIGMA, N, samples, results_dir, f"N_{N}_{dataset_type}")
+            results.append(
+                [dataset_type, DEFAULT_ETA, DEFAULT_SIGMA, N, DEFAULT_GRIDSIZE, *evaluate_network(network, samples)])
+
+        for grid in grid_shapes:
+            print(f"Testing gridsize={grid} on {dataset_type}")
+            network = SOM((2, 1), grid)
+            run_training(network, DEFAULT_ETA, DEFAULT_SIGMA, DEFAULT_N, samples, results_dir,
+                         f"grid_{grid[0]}x{grid[1]}_{dataset_type}")
+            results.append(
+                [dataset_type, DEFAULT_ETA, DEFAULT_SIGMA, DEFAULT_N, grid, *evaluate_network(network, samples)])
+
+    # Save results to CSV
+    df_results = pd.DataFrame(results, columns=["DatasetType", "Eta", "Sigma", "N", "GridSize", "QuantificationError",
+                                                "SelfOrganizationError"])
+    df_results.to_csv(os.path.join(results_dir, "results.csv"), index=False)
+    print("All tests completed. Results saved to results/results.csv")
+
+
+def generate_dataset(dataset_type):
+    """
+    Generate different types of datasets to test SOM performance.
+    """
+    nsamples = 1200
+    if dataset_type == "uniform":
+        return numpy.random.random((nsamples, 2, 1)) * 2 - 1
+    elif dataset_type == "clustered":
+        cluster1 = numpy.random.random((nsamples // 2, 2, 1)) * 0.5
+        cluster2 = numpy.random.random((nsamples // 2, 2, 1)) * 0.5 + 0.5
+        return numpy.vstack((cluster1, cluster2))
+    elif dataset_type == "random_gap":
+        samples = numpy.random.random((nsamples, 2, 1)) * 2 - 1
+        mask = numpy.abs(samples[:, 0, 0]) > 0.2  # Creates a gap
+        return samples[mask]
+    return numpy.random.random((nsamples, 2, 1)) * 2 - 1
+
+
+def run_training(network, eta, sigma, N, samples, results_dir, name):
+    """
+    Trains a SOM network with given parameters and saves final visualization.
+    """
+    for i in range(N + 1):
+        if i % 5000 == 0:
+            print(f"Iteration {i} for {name}")
+        index = numpy.random.randint(samples.shape[0])
+        x = samples[index].flatten()
+        network.compute(x)
+        network.learn(eta, sigma, x)
+
+    # Save final visualization
+    filename = os.path.join(results_dir, f"som_{name}.png")
+    network.scatter_plot(save_path=filename)
+
+
+def evaluate_network(network, samples):
+    """
+    Computes quantification and self-organization errors for the trained network.
+    """
+    return network.quantification(samples), network.auto_organisation(samples)
+
+
+# Run tests
+test_parameters()
 
 # -----------------------------------------------------------------------------
 if __name__ == '__main__':
