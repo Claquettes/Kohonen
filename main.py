@@ -10,9 +10,12 @@
 # ------------------------------------------------------------------------
 # Pour que les divisions soient toutes réelles (pas de division entière)
 from __future__ import division
+import pandas as pd
 # Librairie de calcul matriciel
 import numpy
 # Librairie d'affichage
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 
@@ -130,7 +133,7 @@ class SOM:
             for y_pos in range(self.gridsize[1]):
                 self.map[x_pos][y_pos].learn(eta, sigma, jetoilex, jetoiley, x)
 
-    def scatter_plot(self, interactive=False):
+    def scatter_plot(self, interactive=False, save_path=None):
         '''
         @summary: Affichage du réseau dans l'espace d'entrée (utilisable dans le cas d'entrée à deux dimensions et d'une carte avec une topologie de grille carrée)
         @param interactive: Indique si l'affichage se fait en mode interactif
@@ -154,6 +157,8 @@ class SOM:
         # Affichage du titre de la figure
         plt.suptitle('Poids dans l\'espace d\'entree')
         # Affichage de la figure
+        if save_path is not None:
+            plt.savefig(save_path)
         if not interactive:
             plt.show()
 
