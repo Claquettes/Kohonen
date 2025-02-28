@@ -71,13 +71,9 @@ class SOM:
                 error_count += 1
         return error_count / len(X)
 
-# -----------------------------------------------------------------------------
-# Robotic Arm Simulation Data (θ1, θ2 → x1, x2)
-# -----------------------------------------------------------------------------
 if __name__ == '__main__':
     np.random.seed(42)  # Reproducibility
 
-    # Generate data (θ1, θ2) angles in [0, π]
     nsamples = 1200
     samples_robot = np.random.random((nsamples, 4, 1))
     samples_robot[:, 0:2, :] *= np.pi
@@ -89,9 +85,7 @@ if __name__ == '__main__':
     samples_robot[:, 2, :] = l1 * np.cos(samples_robot[:, 0, :]) + l2 * np.cos(samples_robot[:, 0, :] + samples_robot[:, 1, :])
     samples_robot[:, 3, :] = l1 * np.sin(samples_robot[:, 0, :]) + l2 * np.sin(samples_robot[:, 0, :] + samples_robot[:, 1, :])
 
-    # -----------------------------------------------------------------------------
-    # Train a Kohonen SOM on (θ1, θ2, x1, x2)
-    # -----------------------------------------------------------------------------
+
     som_robotic = SOM((4, 1), (10, 10))  # 10x10 SOM grid
     ETA, SIGMA, N = 0.05, 1.4, 30000
 
